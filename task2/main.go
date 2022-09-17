@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
@@ -16,6 +18,15 @@ import (
 
 var token string
 var db *sql.DB
+
+type Metadata struct {
+	ID          string
+	Filename    string
+	ContentType string
+	Size        int
+	Path        string
+	CreatedAt   time.Time
+}
 
 func init() {
 	if err := godotenv.Load("./task2/secret.env"); err != nil {
@@ -28,10 +39,10 @@ func init() {
 		panic(err.Error())
 	}
 	db = database
-	defer db.Close()
 }
 
 func main() {
+	defer db.Close()
 	templates, err := template.ParseFiles("./task2/template/index.html", "./task2/template/upload.html")
 	if err != nil {
 		panic(err.Error())
@@ -58,16 +69,31 @@ func main() {
 			}
 			defer file.Close()
 
-			destination := fmt.Sprint("./task2/images/", uuid.NewString(), "-", fileHeader.Filename)
-			fmt.Println(destination)
-			os.Create(destination)
+			uniqueID := uuid.NewString()
+			destination := fmt.Sprint("./task2/images/", uniqueID, "-", fileHeader.Filename)
+			destinationFile, err := os.Create(destination)
+			if err != nil {
+				fmt.Println(err.Error())
+				w.WriteHeader(500)
+				return
+			}
+			defer destinationFile.Close()
+			io.Copy(destinationFile, file)
 
-			// metadata := Metadata{
-			// 	Filename:    fileHeader.Filename,
-			// 	ContentType: fileHeader.Header.Get("Content-Type"),
-			// 	Size:        int(fileHeader.Size),
-			// 	Path:        destination,
-			// }
+			metadata := Metadata{
+				ID:          uniqueID,
+				Filename:    fileHeader.Filename,
+				ContentType: fileHeader.Header.Get("Content-Type"),
+				Size:        int(fileHeader.Size),
+				Path:        destination,
+			}
+
+			_, err = db.Exec("INSERT INTO metadata (id, filename, content_type, size, path) VALUES (?,?,?,?,?)", metadata.ID, metadata.Filename, metadata.ContentType, metadata.Size, metadata.Path)
+			if err != nil {
+				fmt.Println(err)
+				w.WriteHeader(500)
+				return
+			}
 
 			templates.ExecuteTemplate(w, "upload.html", map[string]interface{}{
 				"filename": fileHeader.Filename,

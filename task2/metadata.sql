@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 17, 2022 at 11:30 AM
+-- Generation Time: Sep 17, 2022 at 12:06 PM
 -- Server version: 10.4.24-MariaDB
 -- PHP Version: 8.1.6
 
@@ -28,11 +28,12 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `metadata` (
-  `id` int(11) NOT NULL,
+  `id` varchar(255) NOT NULL,
   `filename` text NOT NULL,
-  `content-type` varchar(255) NOT NULL,
+  `content_type` varchar(255) NOT NULL,
   `size` int(11) NOT NULL,
-  `path` text NOT NULL
+  `path` text NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -44,16 +45,6 @@ CREATE TABLE `metadata` (
 --
 ALTER TABLE `metadata`
   ADD PRIMARY KEY (`id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `metadata`
---
-ALTER TABLE `metadata`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
