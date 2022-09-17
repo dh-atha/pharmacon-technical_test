@@ -7,17 +7,19 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
-
 	"github.com/joho/godotenv"
 )
 
-var token string
-var db *sql.DB
+var (
+	token string
+	db    *sql.DB
+)
 
 type Metadata struct {
 	ID          string
@@ -33,8 +35,19 @@ func init() {
 		panic(err.Error())
 	}
 	token = os.Getenv("token")
+	username := os.Getenv("username")
+	password := os.Getenv("password")
+	host := os.Getenv("host")
+	db_port := os.Getenv("db_port")
+	cnvDbPort, err := strconv.Atoi(db_port)
+	if err != nil {
+		fmt.Println("db_port isnt int")
+		panic(err.Error())
+	}
+	databaseName := os.Getenv("database")
 
-	database, err := sql.Open("mysql", "root:@tcp(localhost:3306)/pharmacon")
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", username, password, host, cnvDbPort, databaseName)
+	database, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -42,13 +55,21 @@ func init() {
 }
 
 func main() {
-	defer db.Close()
 	templates, err := template.ParseFiles("./task2/template/index.html", "./task2/template/upload.html")
 	if err != nil {
 		panic(err.Error())
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", ServeHTML(templates))
+	http.HandleFunc("/upload", UploadHandler(templates))
+
+	fmt.Println("Hosted in localhost:8000")
+	defer db.Close()
+	http.ListenAndServe(":8000", nil)
+}
+
+func ServeHTML(templates *template.Template) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			templates.ExecuteTemplate(w, "index.html", map[string]interface{}{
 				"token": token,
@@ -56,9 +77,11 @@ func main() {
 		} else {
 			w.WriteHeader(404)
 		}
-	})
+	}
+}
 
-	http.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+func UploadHandler(templates *template.Template) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			auth := r.FormValue("auth")
 			file, fileHeader, err := r.FormFile("data")
@@ -101,8 +124,5 @@ func main() {
 		} else {
 			w.WriteHeader(404)
 		}
-	})
-
-	fmt.Println("Hosted in localhost:8000")
-	http.ListenAndServe(":8000", nil)
+	}
 }

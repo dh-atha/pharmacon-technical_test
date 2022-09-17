@@ -1,5 +1,3 @@
-Add env file named secret.env inside task2 folder
+1. Edit example.secret.env with your configuration, then rename to only secret.env
 
-inside secret.env must have token variable
-
-Create mysql database with name pharmacon, then import metadata.sql file in task2 folder
+2. Import metadata.sql file in task2 folder
